@@ -1,6 +1,7 @@
 #include "parser.h"    // cmd_t, position_t, parse_commands()
 
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
@@ -49,15 +50,42 @@ void fork_error() {
  *  Fork a proccess for command with index i in the command pipeline. If needed,
  *  create a new pipe and update the in and out members for the command..
  */
-void fork_cmd(int i) {
+void fork_cmd(int i, int fd1[], int fd2[], position_t pos) {
   pid_t pid;
 
+  
   switch (pid = fork()) {
     case -1:
       fork_error();
     case 0:
       // Child process after a successful fork().
 
+      switch (pos)
+      {
+      case single:
+        close(fd2[0]);
+        close(fd2[1]);
+        break;
+      case first:
+        close(fd2[0]);
+        dup2(fd2[1], 1);
+        break;
+      case middle:
+        close(fd1[1]);
+        close(fd2[0]);
+        dup2(fd1[0], 0);
+        dup2(fd2[1], 1);
+        break;
+      case last:
+        close(fd1[1]);
+        close(fd2[0]);
+        close(fd2[1]);
+        dup2(fd1[0], 0);
+        break;
+      default:
+        break;
+      }
+      
       // Execute the command in the contex of the child process.
       execvp(commands[i].argv[0], commands[i].argv);
 
@@ -76,10 +104,20 @@ void fork_cmd(int i) {
  *  Fork one child process for each command in the command pipeline.
  */
 void fork_commands(int n) {
-
+  
+  int fd_old[2] = {0, 0};
   for (int i = 0; i < n; i++) {
-    fork_cmd(i);
+    int fd[2];
+    if (pipe(fd)) exit(EXIT_FAILURE);
+    position_t pos = cmd_position(i, n);
+    fork_cmd(i, fd_old, fd, pos);
+    close(fd_old[0]);
+    close(fd_old[1]);
+    fd_old[0] = fd[0];
+    fd_old[1] = fd[1];
   }
+  close(fd_old[0]);
+  close(fd_old[1]);
 }
 
 /**
@@ -87,7 +125,7 @@ void fork_commands(int n) {
  *  buffer.
  */
 void get_line(char* buffer, size_t size) {
-  getline(&buffer, &size, stdin);
+  if(getline(&buffer, &size, stdin));
   buffer[strlen(buffer)-1] = '\0';
 }
 
@@ -95,14 +133,15 @@ void get_line(char* buffer, size_t size) {
  * Make the parents wait for all the child processes.
  */
 void wait_for_all_cmds(int n) {
-  // Not implemented yet!
+  for(int i = 0; i < n; i++){
+    wait(NULL);
+  }
 }
 
 int main() {
   int n;               // Number of commands in a command pipeline.
   size_t size = 128;   // Max size of a command line string.
   char line[size];     // Buffer for a command line string.
-
 
   while(true) {
     printf(" >>> ");

@@ -8,19 +8,53 @@
 
 void child_a(int fd[]) {
 
-  // TODO: Add code here.
+  close(fd[READ]);
+  dup2(fd[WRITE], WRITE);
+
+  execlp("ls", "ls", "-F", "-l", NULL);
+
+  exit(EXIT_FAILURE);
 
 }
 
 void child_b(int fd[]) {
 
-  // TODO: Add code here.
+  close(fd[WRITE]);
+  dup2(fd[READ], READ);
 
+  execlp("nl", "nl", NULL);
+
+  exit(EXIT_FAILURE);
 }
 
 int main(void) {
   int fd[2];
 
-  // TODO: Add code here.
+  if (pipe(fd) == -1) exit(EXIT_FAILURE);
 
+  int a_id = fork();
+
+  if(a_id == 0){
+    child_a(fd);
+  }
+  else if(a_id == -1){
+    exit(EXIT_FAILURE);
+  }
+
+  int b_id = fork();
+
+  if(b_id == 0){
+    child_b(fd);
+  }
+  else if (b_id == -1) {
+    exit(EXIT_FAILURE);
+  }
+
+  close(fd[READ]);
+  close(fd[WRITE]);
+
+  int status;
+  wait(&status);
+  wait(&status);
+  puts("Done");
 }
