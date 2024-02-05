@@ -50,7 +50,7 @@ void fork_error() {
  *  Fork a proccess for command with index i in the command pipeline. If needed,
  *  create a new pipe and update the in and out members for the command..
  */
-void fork_cmd(int i, int fd1[], int fd2[], position_t pos) {
+void fork_cmd(int i, int fd_old[], int fd_new[], position_t pos) {
   pid_t pid;
 
   
@@ -63,24 +63,24 @@ void fork_cmd(int i, int fd1[], int fd2[], position_t pos) {
       switch (pos)
       {
       case single:
-        close(fd2[0]);
-        close(fd2[1]);
+        close(fd_new[0]);
+        close(fd_new[1]);
         break;
       case first:
-        close(fd2[0]);
-        dup2(fd2[1], 1);
+        close(fd_new[0]);
+        dup2(fd_new[1], 1);
         break;
       case middle:
-        close(fd1[1]);
-        close(fd2[0]);
-        dup2(fd1[0], 0);
-        dup2(fd2[1], 1);
+        close(fd_old[1]);
+        close(fd_new[0]);
+        dup2(fd_old[0], 0);
+        dup2(fd_new[1], 1);
         break;
       case last:
-        close(fd1[1]);
-        close(fd2[0]);
-        close(fd2[1]);
-        dup2(fd1[0], 0);
+        close(fd_old[1]);
+        close(fd_new[0]);
+        close(fd_new[1]);
+        dup2(fd_old[0], 0);
         break;
       default:
         break;
@@ -111,8 +111,10 @@ void fork_commands(int n) {
     if (pipe(fd)) exit(EXIT_FAILURE);
     position_t pos = cmd_position(i, n);
     fork_cmd(i, fd_old, fd, pos);
-    close(fd_old[0]);
-    close(fd_old[1]);
+    if(fd_old[0] != 0){
+      close(fd_old[0]);
+      close(fd_old[1]);
+    }
     fd_old[0] = fd[0];
     fd_old[1] = fd[1];
   }
