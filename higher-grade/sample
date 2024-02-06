@@ -1,0 +1,8 @@
+Bat
+Goat
+Apple
+Dog
+First
+Eat
+Hide
+cat sample | grep -v a | sort -r | nl

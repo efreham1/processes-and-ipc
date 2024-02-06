@@ -118,8 +118,10 @@ void fork_commands(int n) {
     fd_old[0] = fd[0];
     fd_old[1] = fd[1];
   }
-  close(fd_old[0]);
-  close(fd_old[1]);
+  if (n != 0){
+    close(fd_old[0]);
+    close(fd_old[1]);
+  }
 }
 
 /**
@@ -127,8 +129,8 @@ void fork_commands(int n) {
  *  buffer.
  */
 void get_line(char* buffer, size_t size) {
-  if(getline(&buffer, &size, stdin));
-  buffer[strlen(buffer)-1] = '\0';
+  if(getline(&buffer, &size, stdin) != -1) buffer[strlen(buffer)-1] = '\0';
+  else exit(EXIT_FAILURE);
 }
 
 /**
